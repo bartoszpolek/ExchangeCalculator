@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -14,4 +16,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+}
+
+dependencies {
+    implementation(project(":core:common"))
+    implementation(project(":core:network"))
+
+    implementation(libs.retrofit)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 }
