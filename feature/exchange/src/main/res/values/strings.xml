@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="exchange_title">Exchange calculator</string>
+    <string name="exchange_currency_sheet_title">Choose currency</string>
+</resources>

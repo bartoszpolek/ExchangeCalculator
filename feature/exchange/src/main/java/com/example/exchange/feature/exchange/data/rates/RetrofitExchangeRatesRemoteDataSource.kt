@@ -29,5 +29,5 @@ class RetrofitExchangeRatesRemoteDataSource @Inject constructor(
     }
 
     private fun List<CurrencyCode>.toQuery(): String =
-        joinToString(separator = ",") { code -> code.raw }
+        joinToString(separator = ",") { code -> code.code }
 }

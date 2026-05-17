@@ -31,8 +31,8 @@ private fun String.toCurrencyCodeOrNull(): CurrencyCode? {
     val normalized = lowercase(Locale.US)
     if (!normalized.startsWith(BOOK_PREFIX)) return null
 
-    val rawCode = normalized.removePrefix(BOOK_PREFIX).uppercase(Locale.US)
-    return if (rawCode.isBlank()) null else CurrencyCode(rawCode)
+    val code = normalized.removePrefix(BOOK_PREFIX).uppercase(Locale.US)
+    return if (code.isBlank()) null else CurrencyCode(code)
 }
 
 private const val BOOK_PREFIX = "usdc_"

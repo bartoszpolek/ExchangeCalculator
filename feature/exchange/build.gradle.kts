@@ -21,6 +21,7 @@ android {
 
 dependencies {
     implementation(project(":core:common"))
+    implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
 
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
