@@ -36,6 +36,30 @@ class ExchangeRateDtoTest {
         assertThat(rate).isNull()
     }
 
+    @Test fun `returns null when ask is zero`() {
+        val rate = validDto().copy(ask = "0").toExchangeRate()
+
+        assertThat(rate).isNull()
+    }
+
+    @Test fun `returns null when bid is zero`() {
+        val rate = validDto().copy(bid = "0").toExchangeRate()
+
+        assertThat(rate).isNull()
+    }
+
+    @Test fun `returns null when ask is negative`() {
+        val rate = validDto().copy(ask = "-1").toExchangeRate()
+
+        assertThat(rate).isNull()
+    }
+
+    @Test fun `returns null when bid is negative`() {
+        val rate = validDto().copy(bid = "-1").toExchangeRate()
+
+        assertThat(rate).isNull()
+    }
+
     @Test fun `returns null when book does not use expected prefix`() {
         val rate = validDto().copy(book = "mxn_usdc").toExchangeRate()
 

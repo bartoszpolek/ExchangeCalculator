@@ -3,6 +3,7 @@ package com.example.exchange.feature.exchange.data.dto
 import com.example.exchange.feature.exchange.domain.model.CurrencyCode
 import com.example.exchange.feature.exchange.domain.model.ExchangeRate
 import kotlinx.serialization.Serializable
+import java.math.BigDecimal
 import java.util.Locale
 
 @Serializable
@@ -17,6 +18,7 @@ fun ExchangeRateDto.toExchangeRate(): ExchangeRate? {
     val currencyCode = book.toCurrencyCodeOrNull() ?: return null
     val askDecimal = ask.toBigDecimalOrNull() ?: return null
     val bidDecimal = bid.toBigDecimalOrNull() ?: return null
+    if (askDecimal <= BigDecimal.ZERO || bidDecimal <= BigDecimal.ZERO) return null
 
     return ExchangeRate(
         currencyCode = currencyCode,
