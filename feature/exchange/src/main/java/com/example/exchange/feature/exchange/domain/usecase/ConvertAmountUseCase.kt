@@ -13,10 +13,10 @@ class ConvertAmountUseCase @Inject constructor() {
         direction: ConvertDirection,
     ): BigDecimal =
         when (direction) {
-            ConvertDirection.UsdcToFiat ->
+            ConvertDirection.USDC_TO_FIAT ->
                 amount.multiply(midRate)
 
-            ConvertDirection.FiatToUsdc ->
+            ConvertDirection.FIAT_TO_USDC ->
                 amount.divide(midRate, CONVERSION_MATH_CONTEXT)
         }
 

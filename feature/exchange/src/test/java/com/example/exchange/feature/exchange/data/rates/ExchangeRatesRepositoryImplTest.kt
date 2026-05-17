@@ -22,7 +22,7 @@ class ExchangeRatesRepositoryImplTest {
         val mxnRate = exchangeRate(mxn)
         remoteDataSource.nextResult = Result.Success(listOf(mxnRate))
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.Available(mxnRate))
         assertThat(remoteDataSource.requests).containsExactly(listOf(mxn))
@@ -32,7 +32,7 @@ class ExchangeRatesRepositoryImplTest {
         val mxn = CurrencyCode("MXN")
         remoteDataSource.nextResult = Result.Success(listOf(null))
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.Unavailable)
     }
@@ -41,7 +41,7 @@ class ExchangeRatesRepositoryImplTest {
         val mxn = CurrencyCode("MXN")
         remoteDataSource.nextResult = Result.Success(listOf(exchangeRate(CurrencyCode("ARS"))))
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.Unavailable)
     }
@@ -50,7 +50,7 @@ class ExchangeRatesRepositoryImplTest {
         val mxn = CurrencyCode("MXN")
         remoteDataSource.nextResult = Result.Failure(NetworkError.Server(500))
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.Unavailable)
     }
@@ -59,7 +59,7 @@ class ExchangeRatesRepositoryImplTest {
         val mxn = CurrencyCode("MXN")
         remoteDataSource.nextResult = Result.Failure(NetworkError.Client(400))
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.Unavailable)
     }
@@ -70,7 +70,7 @@ class ExchangeRatesRepositoryImplTest {
             NetworkError.Unknown(IllegalStateException("boom")),
         )
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.Unavailable)
     }
@@ -79,7 +79,7 @@ class ExchangeRatesRepositoryImplTest {
         val mxn = CurrencyCode("MXN")
         remoteDataSource.nextResult = Result.Failure(NetworkError.ConnectionFailure)
 
-        val result = repository.fetch(mxn)
+        val result = repository.getRate(mxn)
 
         assertThat(result).isEqualTo(RateFetchResult.NetworkFailure)
     }

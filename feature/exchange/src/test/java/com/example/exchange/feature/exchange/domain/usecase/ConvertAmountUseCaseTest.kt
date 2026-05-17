@@ -13,7 +13,7 @@ class ConvertAmountUseCaseTest {
         val result = convertAmount(
             amount = BigDecimal("12.345"),
             midRate = BigDecimal("2"),
-            direction = ConvertDirection.UsdcToFiat,
+            direction = ConvertDirection.USDC_TO_FIAT,
         )
 
         assertThat(result).isEqualByComparingTo("24.690")
@@ -23,7 +23,7 @@ class ConvertAmountUseCaseTest {
         val result = convertAmount(
             amount = BigDecimal("10"),
             midRate = BigDecimal("3"),
-            direction = ConvertDirection.FiatToUsdc,
+            direction = ConvertDirection.FIAT_TO_USDC,
         )
 
         assertThat(result).isEqualByComparingTo("3.3333333333333333333")

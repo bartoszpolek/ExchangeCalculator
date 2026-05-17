@@ -25,7 +25,7 @@ class CurrencyListRepositoryImplTest {
             ),
         )
 
-        assertThat(repository.load()).containsExactly(
+        assertThat(repository.getCurrencies()).containsExactly(
             CurrencyCode("ARS"),
             CurrencyCode("MXN"),
         )
@@ -34,7 +34,7 @@ class CurrencyListRepositoryImplTest {
     @Test fun `uses local codes when remote returns empty list`() = runTest {
         remoteDataSource.nextResult = Result.Success(emptyList())
 
-        assertThat(repository.load()).containsExactly(
+        assertThat(repository.getCurrencies()).containsExactly(
             CurrencyCode("MXN"),
             CurrencyCode("ARS"),
             CurrencyCode("BRL"),
@@ -50,7 +50,7 @@ class CurrencyListRepositoryImplTest {
             ),
         )
 
-        assertThat(repository.load()).containsExactly(
+        assertThat(repository.getCurrencies()).containsExactly(
             CurrencyCode("MXN"),
             CurrencyCode("NEW"),
         )
@@ -59,7 +59,7 @@ class CurrencyListRepositoryImplTest {
     @Test fun `uses local codes when remote is not implemented`() = runTest {
         remoteDataSource.nextResult = Result.Failure(CurrencyListError.NotImplemented)
 
-        assertThat(repository.load()).containsExactly(
+        assertThat(repository.getCurrencies()).containsExactly(
             CurrencyCode("MXN"),
             CurrencyCode("ARS"),
             CurrencyCode("BRL"),
@@ -70,7 +70,7 @@ class CurrencyListRepositoryImplTest {
     @Test fun `uses local codes when remote has server error`() = runTest {
         remoteDataSource.nextResult = Result.Failure(CurrencyListError.Server(500))
 
-        assertThat(repository.load()).containsExactly(
+        assertThat(repository.getCurrencies()).containsExactly(
             CurrencyCode("MXN"),
             CurrencyCode("ARS"),
             CurrencyCode("BRL"),
@@ -81,7 +81,7 @@ class CurrencyListRepositoryImplTest {
     @Test fun `uses local codes when remote has network error`() = runTest {
         remoteDataSource.nextResult = Result.Failure(CurrencyListError.Network)
 
-        assertThat(repository.load()).containsExactly(
+        assertThat(repository.getCurrencies()).containsExactly(
             CurrencyCode("MXN"),
             CurrencyCode("ARS"),
             CurrencyCode("BRL"),

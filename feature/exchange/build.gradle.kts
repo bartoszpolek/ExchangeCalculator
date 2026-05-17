@@ -23,6 +23,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:network"))
 
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.retrofit)
     implementation(libs.kotlinx.serialization.json)
 
@@ -32,6 +33,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.assertk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.retrofit.kotlinx.serialization.converter)
     testImplementation(libs.okhttp.mockwebserver)

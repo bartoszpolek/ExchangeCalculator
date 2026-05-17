@@ -12,7 +12,7 @@ class ExchangeRatesRepositoryImpl @Inject constructor(
     private val remoteDataSource: ExchangeRatesRemoteDataSource,
 ) : ExchangeRatesRepository {
 
-    override suspend fun fetch(
+    override suspend fun getRate(
         currency: CurrencyCode,
     ): RateFetchResult {
         return when (val result = remoteDataSource.fetch(listOf(currency))) {

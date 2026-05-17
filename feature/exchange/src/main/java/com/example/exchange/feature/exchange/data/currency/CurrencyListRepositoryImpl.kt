@@ -10,7 +10,7 @@ class CurrencyListRepositoryImpl @Inject constructor(
     private val localDataSource: LocalCurrencyListDataSource,
 ) : CurrencyListRepository {
 
-    override suspend fun load(): List<CurrencyCode> =
+    override suspend fun getCurrencies(): List<CurrencyCode> =
         when (val result = remoteDataSource.fetch()) {
             is Result.Success -> result.value.ifEmpty { localDataSource.codes() }
             is Result.Failure -> localDataSource.codes()
