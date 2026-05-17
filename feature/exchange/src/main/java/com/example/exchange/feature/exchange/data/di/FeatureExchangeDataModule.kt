@@ -6,8 +6,10 @@ import com.example.exchange.feature.exchange.data.currency.CurrencyListRemoteDat
 import com.example.exchange.feature.exchange.data.currency.CurrencyListRepositoryImpl
 import com.example.exchange.feature.exchange.data.currency.RetrofitCurrencyListDataSource
 import com.example.exchange.feature.exchange.data.rates.ExchangeRatesRemoteDataSource
+import com.example.exchange.feature.exchange.data.rates.ExchangeRatesRepositoryImpl
 import com.example.exchange.feature.exchange.data.rates.RetrofitExchangeRatesRemoteDataSource
 import com.example.exchange.feature.exchange.domain.repository.CurrencyListRepository
+import com.example.exchange.feature.exchange.domain.repository.ExchangeRatesRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -37,6 +39,12 @@ abstract class FeatureExchangeDataModule {
     abstract fun bindExchangeRatesRemoteDataSource(
         dataSource: RetrofitExchangeRatesRemoteDataSource,
     ): ExchangeRatesRemoteDataSource
+
+    @Binds
+    @Singleton
+    abstract fun bindExchangeRatesRepository(
+        repository: ExchangeRatesRepositoryImpl,
+    ): ExchangeRatesRepository
 
     companion object {
         @Provides
