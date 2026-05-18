@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="exchange_title">Exchange calculator</string>
+    <string name="exchange_rate_format">1 USDc = %1$s %2$s</string>
+    <string name="exchange_rate_loading">Loading exchange rate</string>
+    <string name="exchange_rate_unavailable">Exchange rate unavailable.</string>
+    <string name="exchange_network_banner">No connection. Pull down to try again.</string>
     <string name="exchange_currency_sheet_title">Choose currency</string>
+    <string name="exchange_content_description_usdc_amount">USDc amount</string>
+    <string name="exchange_content_description_fiat_amount">Fiat amount</string>
+    <string name="exchange_content_description_close_currency_sheet">Close currency sheet</string>
+    <string name="exchange_content_description_swap">Swap currencies</string>
 </resources>

@@ -6,6 +6,8 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualByComparingTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
+import assertk.assertions.isTrue
+import com.example.exchange.core.common.format.AmountFormatter
 import com.example.exchange.feature.exchange.domain.model.CurrencyCode
 import com.example.exchange.feature.exchange.domain.model.ExchangeRate
 import com.example.exchange.feature.exchange.domain.model.RateFetchResult
@@ -29,17 +31,13 @@ import java.util.Locale
 class ExchangeViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
-    private lateinit var previousLocale: Locale
 
     @Before fun setUp() {
-        previousLocale = Locale.getDefault()
-        Locale.setDefault(Locale.US)
         Dispatchers.setMain(testDispatcher)
     }
 
     @After fun tearDown() {
         Dispatchers.resetMain()
-        Locale.setDefault(previousLocale)
     }
 
     @Test fun `loads currencies in init and fetches first currency rate`() = runTest {
@@ -57,12 +55,13 @@ class ExchangeViewModelTest {
         )
 
         viewModel.state.test {
-            val state = awaitItem()
+            val state = awaitItem() as ExchangeUiState.Ready
 
-            assertThat(state.isLoadingCurrencies).isFalse()
             assertThat(state.currencies).containsExactly(MXN, ARS)
             assertThat(state.selectedCurrency).isEqualTo(MXN)
             assertThat(state.rateState.availableMidRate()).isEqualByComparingTo("18.4087350000")
+            assertThat(state.usdcAmount).isEqualTo("0")
+            assertThat(state.fiatAmount).isEqualTo("0")
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -79,9 +78,23 @@ class ExchangeViewModelTest {
             ),
         )
 
-        assertThat(viewModel.state.value.activeInput).isEqualTo(ExchangeInput.USDC)
-        assertThat(viewModel.state.value.usdcAmount).isEqualTo("12.34")
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("24.68")
+        assertThat(viewModel.readyState.activeInput).isEqualTo(ExchangeInput.USDC)
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("12.34")
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("24.68")
+    }
+
+    @Test fun `converted whole amount omits redundant zero fraction`() = runTest {
+        val viewModel = createReadyViewModel()
+
+        viewModel.onAction(
+            ExchangeAction.OnAmountChange(
+                input = ExchangeInput.USDC,
+                value = "9999",
+            ),
+        )
+
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("9999")
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("19998")
     }
 
     @Test fun `typing fiat amount converts USDC amount`() = runTest {
@@ -94,9 +107,9 @@ class ExchangeViewModelTest {
             ),
         )
 
-        assertThat(viewModel.state.value.activeInput).isEqualTo(ExchangeInput.FIAT)
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("12.34")
-        assertThat(viewModel.state.value.usdcAmount).isEqualTo("6.17")
+        assertThat(viewModel.readyState.activeInput).isEqualTo(ExchangeInput.FIAT)
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("12.34")
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("6.17")
     }
 
     @Test fun `empty active amount clears converted amount`() = runTest {
@@ -115,11 +128,11 @@ class ExchangeViewModelTest {
             ),
         )
 
-        assertThat(viewModel.state.value.usdcAmount).isEqualTo("")
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("")
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("")
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("")
     }
 
-    @Test fun `swap toggles input positions without changing selected currency`() = runTest {
+    @Test fun `swap toggles input positions and makes new top input active`() = runTest {
         val viewModel = createReadyViewModel()
         viewModel.onAction(
             ExchangeAction.OnAmountChange(
@@ -130,11 +143,37 @@ class ExchangeViewModelTest {
 
         viewModel.onAction(ExchangeAction.OnSwapClick)
 
-        assertThat(viewModel.state.value.topInput).isEqualTo(ExchangeInput.FIAT)
-        assertThat(viewModel.state.value.activeInput).isEqualTo(ExchangeInput.USDC)
-        assertThat(viewModel.state.value.selectedCurrency).isEqualTo(MXN)
-        assertThat(viewModel.state.value.usdcAmount).isEqualTo("10")
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("20.00")
+        assertThat(viewModel.readyState.topInput).isEqualTo(ExchangeInput.FIAT)
+        assertThat(viewModel.readyState.activeInput).isEqualTo(ExchangeInput.FIAT)
+        assertThat(viewModel.readyState.selectedCurrency).isEqualTo(MXN)
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("10")
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("20")
+    }
+
+    @Test fun `refresh after swap keeps top fiat amount and recalculates bottom USDC amount`() = runTest {
+        val ratesRepository = FakeExchangeRatesRepository(
+            rateResults = mutableMapOf(
+                MXN to RateFetchResult.Available(exchangeRate(MXN, ask = "2", bid = "2")),
+            ),
+        )
+        val viewModel = createViewModel(ratesRepository = ratesRepository)
+        viewModel.onAction(
+            ExchangeAction.OnAmountChange(
+                input = ExchangeInput.USDC,
+                value = "10",
+            ),
+        )
+        viewModel.onAction(ExchangeAction.OnSwapClick)
+
+        ratesRepository.rateResults[MXN] = RateFetchResult.Available(
+            exchangeRate(MXN, ask = "4", bid = "4"),
+        )
+        viewModel.onAction(ExchangeAction.OnRefresh)
+
+        assertThat(viewModel.readyState.topInput).isEqualTo(ExchangeInput.FIAT)
+        assertThat(viewModel.readyState.activeInput).isEqualTo(ExchangeInput.FIAT)
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("20")
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("5")
     }
 
     @Test fun `selecting currency fetches new rate and recalculates current amount`() = runTest {
@@ -155,8 +194,24 @@ class ExchangeViewModelTest {
         viewModel.onAction(ExchangeAction.OnCurrencySelected(ARS))
 
         assertThat(ratesRepository.requestedCurrencies).containsExactly(MXN, ARS)
-        assertThat(viewModel.state.value.selectedCurrency).isEqualTo(ARS)
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("30.00")
+        assertThat(viewModel.readyState.selectedCurrency).isEqualTo(ARS)
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("30")
+    }
+
+    @Test fun `selecting current currency dismisses sheet without fetching rate again`() = runTest {
+        val ratesRepository = FakeExchangeRatesRepository(
+            rateResults = mutableMapOf(
+                MXN to RateFetchResult.Available(exchangeRate(MXN, ask = "2", bid = "2")),
+            ),
+        )
+        val viewModel = createViewModel(ratesRepository = ratesRepository)
+
+        viewModel.onAction(ExchangeAction.OnCurrencyClick)
+        viewModel.onAction(ExchangeAction.OnCurrencySelected(MXN))
+
+        assertThat(viewModel.readyState.selectedCurrency).isEqualTo(MXN)
+        assertThat(viewModel.readyState.isCurrencySheetVisible).isFalse()
+        assertThat(ratesRepository.requestedCurrencies).containsExactly(MXN)
     }
 
     @Test fun `unavailable selected rate clears converted amount`() = runTest {
@@ -176,12 +231,13 @@ class ExchangeViewModelTest {
 
         viewModel.onAction(ExchangeAction.OnCurrencySelected(ARS))
 
-        assertThat(viewModel.state.value.rateState).isEqualTo(ExchangeRateUiState.Unavailable)
-        assertThat(viewModel.state.value.usdcAmount).isEqualTo("10")
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("")
+        assertThat(viewModel.readyState.rateState).isEqualTo(ExchangeRateUiState.Unavailable)
+        assertThat(viewModel.readyState.isNetworkBannerVisible).isFalse()
+        assertThat(viewModel.readyState.usdcAmount).isEqualTo("10")
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("")
     }
 
-    @Test fun `network failure stores user message and retry fetches selected currency again`() = runTest {
+    @Test fun `network failure stores rate failure and refresh fetches selected currency again`() = runTest {
         val ratesRepository = FakeExchangeRatesRepository(
             rateResults = mutableMapOf(
                 MXN to RateFetchResult.Available(exchangeRate(MXN, ask = "2", bid = "2")),
@@ -198,28 +254,47 @@ class ExchangeViewModelTest {
 
         viewModel.onAction(ExchangeAction.OnCurrencySelected(ARS))
 
-        assertThat(viewModel.state.value.rateState).isEqualTo(ExchangeRateUiState.Unavailable)
-        assertThat(viewModel.state.value.userMessage).isEqualTo(ExchangeUserMessageType.RATE_NETWORK_ERROR)
+        assertThat(viewModel.readyState.rateState).isEqualTo(ExchangeRateUiState.NetworkFailure)
+        assertThat(viewModel.readyState.isNetworkBannerVisible).isTrue()
 
-        viewModel.onAction(ExchangeAction.OnUserMessageShown)
-        assertThat(viewModel.state.value.userMessage).isEqualTo(null)
-
-        viewModel.onAction(ExchangeAction.OnRetryClick)
+        viewModel.onAction(ExchangeAction.OnRefresh)
 
         assertThat(ratesRepository.requestedCurrencies).containsExactly(MXN, ARS, ARS)
-        assertThat(viewModel.state.value.userMessage).isEqualTo(
-            ExchangeUserMessageType.RATE_NETWORK_ERROR,
-        )
+        assertThat(viewModel.readyState.rateState).isEqualTo(ExchangeRateUiState.NetworkFailure)
+        assertThat(viewModel.readyState.isNetworkBannerVisible).isTrue()
 
         ratesRepository.rateResults[ARS] = RateFetchResult.Available(
             exchangeRate(ARS, ask = "4", bid = "4"),
         )
-        viewModel.onAction(ExchangeAction.OnRetryClick)
+        viewModel.onAction(ExchangeAction.OnRefresh)
 
         assertThat(ratesRepository.requestedCurrencies).containsExactly(MXN, ARS, ARS, ARS)
-        assertThat(viewModel.state.value.rateState.availableMidRate()).isEqualByComparingTo("4")
-        assertThat(viewModel.state.value.fiatAmount).isEqualTo("40.00")
-        assertThat(viewModel.state.value.userMessage).isEqualTo(null)
+        assertThat(viewModel.readyState.rateState.availableMidRate()).isEqualByComparingTo("4")
+        assertThat(viewModel.readyState.isNetworkBannerVisible).isFalse()
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("40")
+    }
+
+    @Test fun `refresh network failure keeps current rate and shows connection banner`() = runTest {
+        val ratesRepository = FakeExchangeRatesRepository(
+            rateResults = mutableMapOf(
+                MXN to RateFetchResult.Available(exchangeRate(MXN, ask = "2", bid = "2")),
+            ),
+        )
+        val viewModel = createViewModel(ratesRepository = ratesRepository)
+        viewModel.onAction(
+            ExchangeAction.OnAmountChange(
+                input = ExchangeInput.USDC,
+                value = "10",
+            ),
+        )
+
+        ratesRepository.rateResults[MXN] = RateFetchResult.NetworkFailure
+        viewModel.onAction(ExchangeAction.OnRefresh)
+
+        assertThat(ratesRepository.requestedCurrencies).containsExactly(MXN, MXN)
+        assertThat(viewModel.readyState.rateState.availableMidRate()).isEqualByComparingTo("2")
+        assertThat(viewModel.readyState.isNetworkBannerVisible).isTrue()
+        assertThat(viewModel.readyState.fiatAmount).isEqualTo("20")
     }
 
     private fun createReadyViewModel(): ExchangeViewModel =
@@ -248,7 +323,11 @@ class ExchangeViewModelTest {
             exchangeRatesRepository = ratesRepository,
             calculateMidRate = CalculateMidRateUseCase(),
             convertAmount = ConvertAmountUseCase(),
+            amountFormatter = AmountFormatter(Locale.US),
         )
+
+    private val ExchangeViewModel.readyState: ExchangeUiState.Ready
+        get() = state.value as ExchangeUiState.Ready
 
     private fun ExchangeRateUiState.availableMidRate(): BigDecimal =
         (this as ExchangeRateUiState.Available).midRate

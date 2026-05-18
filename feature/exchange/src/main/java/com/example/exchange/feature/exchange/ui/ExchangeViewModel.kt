@@ -11,10 +11,13 @@ import com.example.exchange.feature.exchange.domain.usecase.CalculateMidRateUseC
 import com.example.exchange.feature.exchange.domain.usecase.ConvertAmountUseCase
 import com.example.exchange.feature.exchange.domain.usecase.ConvertDirection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 
 @HiltViewModel
@@ -23,12 +26,12 @@ class ExchangeViewModel @Inject constructor(
     private val exchangeRatesRepository: ExchangeRatesRepository,
     private val calculateMidRate: CalculateMidRateUseCase,
     private val convertAmount: ConvertAmountUseCase,
+    private val amountFormatter: AmountFormatter,
 ) : ViewModel() {
 
-    private val amountFormatter = AmountFormatter()
-
-    private val _state = MutableStateFlow(ExchangeUiState())
+    private val _state = MutableStateFlow<ExchangeUiState>(ExchangeUiState.Loading)
     val state = _state.asStateFlow()
+    private var rateFetchJob: Job? = null
 
     init {
         loadCurrencies()
@@ -43,40 +46,31 @@ class ExchangeViewModel @Inject constructor(
                 onSwapClick()
 
             ExchangeAction.OnCurrencyClick ->
-                _state.update { it.copy(isCurrencySheetVisible = true) }
+                updateReady { it.copy(isCurrencySheetVisible = true) }
 
             ExchangeAction.OnCurrencySheetDismiss ->
-                _state.update { it.copy(isCurrencySheetVisible = false) }
+                updateReady { it.copy(isCurrencySheetVisible = false) }
 
             is ExchangeAction.OnCurrencySelected ->
                 onCurrencySelected(action.currency)
 
-            ExchangeAction.OnRetryClick ->
-                fetchSelectedRate()
-
-            ExchangeAction.OnUserMessageShown ->
-                userMessageShown()
+            ExchangeAction.OnRefresh ->
+                refreshSelectedRate()
         }
     }
 
     private fun loadCurrencies() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoadingCurrencies = true) }
-
             val currencies = currencyListRepository.getCurrencies()
-            val selectedCurrency = _state.value.selectedCurrency
-                ?.takeIf(currencies::contains)
-                ?: currencies.firstOrNull()
+            val selectedCurrency = currencies.firstOrNull() ?: return@launch
 
             _state.update {
-                it.copy(
+                ExchangeUiState.Ready(
                     currencies = currencies,
                     selectedCurrency = selectedCurrency,
-                    isLoadingCurrencies = false,
                 )
             }
-
-            selectedCurrency?.let(::fetchRate)
+            fetchRate(selectedCurrency)
         }
     }
 
@@ -84,7 +78,7 @@ class ExchangeViewModel @Inject constructor(
         input: ExchangeInput,
         value: String,
     ) {
-        _state.update {
+        updateReady {
             when (input) {
                 ExchangeInput.USDC ->
                     it.copy(
@@ -104,26 +98,28 @@ class ExchangeViewModel @Inject constructor(
     }
 
     private fun onSwapClick() {
-        _state.update {
+        val currentState = _state.value as? ExchangeUiState.Ready ?: return
+        val newTopInput = currentState.topInput.opposite()
+
+        updateReady {
             it.copy(
-                topInput = when (it.topInput) {
-                    ExchangeInput.USDC -> ExchangeInput.FIAT
-                    ExchangeInput.FIAT -> ExchangeInput.USDC
-                },
+                topInput = newTopInput,
+                activeInput = newTopInput,
             )
         }
 
-        recalculateConvertedAmount(_state.value.activeInput)
+        recalculateConvertedAmount(newTopInput)
     }
 
     private fun onCurrencySelected(currency: CurrencyCode) {
-        val current = _state.value.selectedCurrency
-        if (current == currency) {
-            _state.update { it.copy(isCurrencySheetVisible = false) }
+        val currentState = _state.value as? ExchangeUiState.Ready ?: return
+
+        if (currentState.selectedCurrency == currency) {
+            updateReady { it.copy(isCurrencySheetVisible = false) }
             return
         }
 
-        _state.update {
+        updateReady {
             it.copy(
                 selectedCurrency = currency,
                 isCurrencySheetVisible = false,
@@ -132,83 +128,72 @@ class ExchangeViewModel @Inject constructor(
         fetchRate(currency)
     }
 
-    private fun fetchSelectedRate() {
-        _state.value.selectedCurrency?.let(::fetchRate)
+    private fun refreshSelectedRate() {
+        val currentState = _state.value as? ExchangeUiState.Ready ?: return
+        if (currentState.isRefreshing) return
+
+        fetchRate(currency = currentState.selectedCurrency, isRefresh = true)
     }
 
-    private fun fetchRate(currency: CurrencyCode) {
-        viewModelScope.launch {
-            _state.update {
-                it.withClearedConvertedAmount()
-                    .copy(rateState = ExchangeRateUiState.Loading)
+    private fun fetchRate(
+        currency: CurrencyCode,
+        isRefresh: Boolean = false,
+    ) {
+        rateFetchJob?.cancel()
+        rateFetchJob = viewModelScope.launch {
+            val previousRateState = (_state.value as? ExchangeUiState.Ready)?.rateState
+                ?: ExchangeRateUiState.Loading
+            updateReady { it.withRateFetchStarted(isRefresh) }
+
+            val result = exchangeRatesRepository.getRate(currency)
+            val midRate = (result as? RateFetchResult.Available)?.let { available ->
+                calculateMidRate(
+                    ask = available.rate.ask,
+                    bid = available.rate.bid,
+                )
             }
 
-            when (val result = exchangeRatesRepository.getRate(currency)) {
-                is RateFetchResult.Available -> {
-                    if (_state.value.selectedCurrency != currency) return@launch
-
-                    val midRate = calculateMidRate(
-                        ask = result.rate.ask,
-                        bid = result.rate.bid,
+            updateReady { state ->
+                if (state.selectedCurrency != currency) {
+                    state
+                } else {
+                    state.withRateFetchResult(
+                        result = result,
+                        midRate = midRate,
+                        previousRateState = previousRateState,
+                        isRefresh = isRefresh,
                     )
-                    _state.update {
-                        it.copy(
-                            rateState = ExchangeRateUiState.Available(midRate),
-                            userMessage = null,
-                        )
-                    }
-                    recalculateConvertedAmount(_state.value.activeInput)
-                }
-
-                RateFetchResult.Unavailable -> {
-                    if (_state.value.selectedCurrency != currency) return@launch
-
-                    _state.update {
-                        it.withClearedConvertedAmount()
-                            .copy(rateState = ExchangeRateUiState.Unavailable)
-                    }
-                }
-
-                RateFetchResult.NetworkFailure -> {
-                    if (_state.value.selectedCurrency != currency) return@launch
-
-                    _state.update {
-                        it.withClearedConvertedAmount()
-                            .copy(
-                                rateState = ExchangeRateUiState.Unavailable,
-                                userMessage = ExchangeUserMessageType.RATE_NETWORK_ERROR,
-                            )
-                    }
                 }
             }
+            val inputToRecalculate = (_state.value as? ExchangeUiState.Ready)
+                ?.takeIf { state ->
+                    result is RateFetchResult.Available && state.selectedCurrency == currency
+                }
+                ?.activeInput
+            inputToRecalculate?.let(::recalculateConvertedAmount)
         }
     }
 
     private fun recalculateConvertedAmount(input: ExchangeInput) {
-        val currentState = _state.value
-        val rateState = currentState.rateState as? ExchangeRateUiState.Available
-        val amount = amountFormatter.parse(currentState.amountFor(input))
+        updateReady {
+            val rateState = it.rateState as? ExchangeRateUiState.Available
+            val amount = amountFormatter.parse(it.amountForInput(input))
 
-        if (rateState == null || amount == null) {
-            _state.update { it.withClearedConvertedAmount(input) }
-            return
-        }
+            if (rateState == null || amount == null) {
+                return@updateReady it.withResetConvertedAmountForInput(input)
+            }
 
-        val direction = when (input) {
-            ExchangeInput.USDC -> ConvertDirection.USDC_TO_FIAT
-            ExchangeInput.FIAT -> ConvertDirection.FIAT_TO_USDC
-        }
-        val convertedAmount = convertAmount(
-            amount = amount,
-            midRate = rateState.midRate,
-            direction = direction,
-        )
-        val formattedAmount = amountFormatter.format(
-            amount = convertedAmount,
-            scale = DISPLAY_SCALE,
-        )
+            val direction = when (input) {
+                ExchangeInput.USDC -> ConvertDirection.USDC_TO_FIAT
+                ExchangeInput.FIAT -> ConvertDirection.FIAT_TO_USDC
+            }
+            val convertedAmount = convertAmount(
+                amount = amount,
+                midRate = rateState.midRate,
+                direction = direction,
+            )
+            val formattedAmount = convertedAmount.toDisplayAmount()
 
-        _state.update {
             when (input) {
                 ExchangeInput.USDC -> it.copy(fiatAmount = formattedAmount)
                 ExchangeInput.FIAT -> it.copy(usdcAmount = formattedAmount)
@@ -216,23 +201,90 @@ class ExchangeViewModel @Inject constructor(
         }
     }
 
-    private fun ExchangeUiState.amountFor(input: ExchangeInput): String =
-        when (input) {
-            ExchangeInput.USDC -> usdcAmount
-            ExchangeInput.FIAT -> fiatAmount
+    private fun updateReady(
+        transform: (ExchangeUiState.Ready) -> ExchangeUiState.Ready,
+    ) {
+        _state.update { state ->
+            when (state) {
+                ExchangeUiState.Loading -> state
+                is ExchangeUiState.Ready -> transform(state)
+            }
         }
-
-    private fun ExchangeUiState.withClearedConvertedAmount(
-        input: ExchangeInput = activeInput,
-    ): ExchangeUiState =
-        when (input) {
-            ExchangeInput.USDC -> copy(fiatAmount = "")
-            ExchangeInput.FIAT -> copy(usdcAmount = "")
-        }
-
-    private fun userMessageShown() {
-        _state.update { it.copy(userMessage = null) }
     }
+
+    private fun ExchangeUiState.Ready.withRateFetchStarted(
+        isRefresh: Boolean,
+    ): ExchangeUiState.Ready =
+        if (isRefresh) {
+            copy(isRefreshing = true)
+        } else {
+            withResetConvertedAmountForInput()
+                .copy(
+                    isRefreshing = false,
+                    isNetworkBannerVisible = false,
+                    rateState = ExchangeRateUiState.Loading,
+                )
+        }
+
+    private fun ExchangeUiState.Ready.withRateFetchResult(
+        result: RateFetchResult,
+        midRate: BigDecimal?,
+        previousRateState: ExchangeRateUiState,
+        isRefresh: Boolean,
+    ): ExchangeUiState.Ready {
+        val resultState = when (result) {
+            is RateFetchResult.Available -> copy(
+                isNetworkBannerVisible = false,
+                rateState = ExchangeRateUiState.Available(checkNotNull(midRate)),
+            )
+
+            RateFetchResult.Unavailable -> withResetConvertedAmountForInput()
+                .copy(
+                    isNetworkBannerVisible = false,
+                    rateState = ExchangeRateUiState.Unavailable,
+                )
+
+            RateFetchResult.NetworkFailure ->
+                if (isRefresh && previousRateState is ExchangeRateUiState.Available) {
+                    copy(
+                        isNetworkBannerVisible = true,
+                        rateState = previousRateState,
+                    )
+                } else {
+                    withResetConvertedAmountForInput()
+                        .copy(
+                            isNetworkBannerVisible = true,
+                            rateState = ExchangeRateUiState.NetworkFailure,
+                        )
+                }
+        }
+        return resultState.copy(isRefreshing = false)
+    }
+
+    private fun ExchangeUiState.Ready.withResetConvertedAmountForInput(
+        input: ExchangeInput = activeInput,
+    ): ExchangeUiState.Ready {
+        val convertedAmountReplacement =
+            if (amountFormatter.parse(amountForInput(input))?.compareTo(BigDecimal.ZERO) == 0) {
+                ZERO_AMOUNT
+            } else {
+                ""
+            }
+
+        return when (input) {
+            ExchangeInput.USDC -> copy(fiatAmount = convertedAmountReplacement)
+            ExchangeInput.FIAT -> copy(usdcAmount = convertedAmountReplacement)
+        }
+    }
+
+    private fun BigDecimal.toDisplayAmount(): String =
+        if (compareTo(BigDecimal.ZERO) == 0) {
+            ZERO_AMOUNT
+        } else {
+            setScale(DISPLAY_SCALE, RoundingMode.HALF_EVEN)
+                .stripTrailingZeros()
+                .toPlainString()
+        }
 
     private companion object {
         const val DISPLAY_SCALE = 2

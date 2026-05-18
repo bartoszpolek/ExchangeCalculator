@@ -1,4 +1,4 @@
-package com.example.exchange.core.designsystem.components
+package com.example.exchange.feature.exchange.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -20,9 +20,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.exchange.core.designsystem.R
 import com.example.exchange.core.designsystem.theme.ExchangeTheme
 import com.example.exchange.core.designsystem.tokens.Spacing
+import com.example.exchange.feature.exchange.R
 
 @Composable
 fun FlagIcon(
@@ -30,7 +30,7 @@ fun FlagIcon(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     containerSize: Dp = 40.dp,
-    flagSize: Dp = 32.dp,
+    flagSize: Dp = 28.dp,
 ) {
     Box(
         modifier = modifier

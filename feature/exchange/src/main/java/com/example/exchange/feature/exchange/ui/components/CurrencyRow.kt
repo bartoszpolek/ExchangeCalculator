@@ -1,4 +1,4 @@
-package com.example.exchange.core.designsystem.components
+package com.example.exchange.feature.exchange.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
@@ -23,9 +24,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.exchange.core.designsystem.R
+import com.example.exchange.core.designsystem.R as DesignSystemR
 import com.example.exchange.core.designsystem.theme.ExchangeTheme
 import com.example.exchange.core.designsystem.tokens.Spacing
+import com.example.exchange.feature.exchange.R
 
 @Composable
 fun CurrencyRow(
@@ -44,9 +46,10 @@ fun CurrencyRow(
                 onClick = onClick,
                 role = Role.RadioButton,
             )
-            .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+            .heightIn(min = 62.dp)
+            .padding(horizontal = Spacing.lg, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         FlagIcon(
             flagRes = flagRes,
@@ -67,7 +70,7 @@ private fun SelectionIndicator(selected: Boolean) {
     val size = 24.dp
     if (selected) {
         Image(
-            painter = painterResource(R.drawable.ic_check),
+            painter = painterResource(DesignSystemR.drawable.ic_check),
             contentDescription = null,
             modifier = Modifier.size(size),
         )
@@ -83,7 +86,7 @@ private fun SelectionIndicator(selected: Boolean) {
     }
 }
 
-@Preview(name = "CurrencyRow · list", showBackground = true)
+@Preview(name = "CurrencyRow", showBackground = true)
 @Composable
 private fun CurrencyRowPreview() {
     ExchangeTheme {
