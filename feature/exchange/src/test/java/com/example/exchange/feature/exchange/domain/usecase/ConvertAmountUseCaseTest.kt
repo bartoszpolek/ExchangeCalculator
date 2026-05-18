@@ -9,7 +9,8 @@ class ConvertAmountUseCaseTest {
 
     private val convertAmount = ConvertAmountUseCase()
 
-    @Test fun `converts USDC amount to fiat amount`() {
+    @Test
+    fun `converts USDC amount to fiat amount`() {
         val result = convertAmount(
             amount = BigDecimal("12.345"),
             midRate = BigDecimal("2"),
@@ -19,7 +20,8 @@ class ConvertAmountUseCaseTest {
         assertThat(result).isEqualByComparingTo("24.690")
     }
 
-    @Test fun `converts fiat amount to USDC amount`() {
+    @Test
+    fun `converts fiat amount to USDC amount`() {
         val result = convertAmount(
             amount = BigDecimal("10"),
             midRate = BigDecimal("3"),

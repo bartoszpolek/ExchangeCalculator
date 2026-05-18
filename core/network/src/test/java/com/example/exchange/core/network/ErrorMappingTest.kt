@@ -12,37 +12,44 @@ import java.net.SocketTimeoutException
 
 class ErrorMappingTest {
 
-    @Test fun `400 maps to Client`() {
+    @Test
+    fun `400 maps to Client`() {
         assertThat(httpException(400).toNetworkError())
             .isEqualTo(NetworkError.Client(400))
     }
 
-    @Test fun `403 maps to Client`() {
-        assertThat(httpException(403).toNetworkError())
-            .isEqualTo(NetworkError.Client(403))
+    @Test
+    fun `499 maps to Client`() {
+        assertThat(httpException(499).toNetworkError())
+            .isEqualTo(NetworkError.Client(499))
     }
 
-    @Test fun `500 maps to Server`() {
+    @Test
+    fun `500 maps to Server`() {
         assertThat(httpException(500).toNetworkError())
             .isEqualTo(NetworkError.Server(500))
     }
 
-    @Test fun `503 maps to Server`() {
-        assertThat(httpException(503).toNetworkError())
-            .isEqualTo(NetworkError.Server(503))
+    @Test
+    fun `599 maps to Server`() {
+        assertThat(httpException(599).toNetworkError())
+            .isEqualTo(NetworkError.Server(599))
     }
 
-    @Test fun `IOException maps to ConnectionFailure`() {
+    @Test
+    fun `IOException maps to ConnectionFailure`() {
         assertThat(IOException("disconnected").toNetworkError())
             .isEqualTo(NetworkError.ConnectionFailure)
     }
 
-    @Test fun `SocketTimeoutException maps to ConnectionFailure`() {
+    @Test
+    fun `SocketTimeoutException maps to ConnectionFailure`() {
         assertThat(SocketTimeoutException().toNetworkError())
             .isEqualTo(NetworkError.ConnectionFailure)
     }
 
-    @Test fun `RuntimeException maps to Unknown wrapping the cause`() {
+    @Test
+    fun `RuntimeException maps to Unknown wrapping the cause`() {
         val cause = RuntimeException("?")
         assertThat(cause.toNetworkError()).isEqualTo(NetworkError.Unknown(cause))
     }

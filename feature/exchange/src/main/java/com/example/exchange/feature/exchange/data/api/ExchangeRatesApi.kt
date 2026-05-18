@@ -1,6 +1,6 @@
 package com.example.exchange.feature.exchange.data.api
 
-import com.example.exchange.feature.exchange.data.dto.ExchangeRateDto
+import com.example.exchange.feature.exchange.data.rates.ExchangeRateDto
 import retrofit2.http.GET
 import retrofit2.http.Query
 

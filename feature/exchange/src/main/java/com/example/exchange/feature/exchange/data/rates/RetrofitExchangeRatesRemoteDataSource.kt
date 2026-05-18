@@ -4,7 +4,6 @@ import com.example.exchange.core.common.result.Result
 import com.example.exchange.core.network.NetworkError
 import com.example.exchange.core.network.toNetworkError
 import com.example.exchange.feature.exchange.data.api.ExchangeRatesApi
-import com.example.exchange.feature.exchange.data.dto.toExchangeRate
 import com.example.exchange.feature.exchange.domain.model.CurrencyCode
 import com.example.exchange.feature.exchange.domain.model.ExchangeRate
 import javax.inject.Inject

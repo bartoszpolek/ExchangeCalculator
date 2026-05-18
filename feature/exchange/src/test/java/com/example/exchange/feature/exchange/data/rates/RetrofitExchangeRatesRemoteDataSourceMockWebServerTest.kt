@@ -30,16 +30,19 @@ class RetrofitExchangeRatesRemoteDataSourceMockWebServerTest {
         explicitNulls = false
     }
 
-    @Before fun setUp() {
+    @Before
+    fun setUp() {
         server = MockWebServer()
         dataSource = RetrofitExchangeRatesRemoteDataSource(createApi())
     }
 
-    @After fun tearDown() {
+    @After
+    fun tearDown() {
         server.shutdown()
     }
 
-    @Test fun `200 maps response body to exchange rates`() = runTest {
+    @Test
+    fun `200 maps response body to exchange rates`() = runTest {
         server.enqueue(
             jsonResponse(
                 """
@@ -62,7 +65,8 @@ class RetrofitExchangeRatesRemoteDataSourceMockWebServerTest {
         assertThat(server.takeRequest().path).isEqualTo("/tickers?currencies=MXN")
     }
 
-    @Test fun `500 maps to server error`() = runTest {
+    @Test
+    fun `500 maps to server error`() = runTest {
         server.enqueue(MockResponse().setResponseCode(500))
 
         val result = dataSource.fetch(listOf(CurrencyCode("MXN")))
@@ -70,7 +74,8 @@ class RetrofitExchangeRatesRemoteDataSourceMockWebServerTest {
         assertThat(result).isEqualTo(Result.Failure(NetworkError.Server(500)))
     }
 
-    @Test fun `disconnect maps to connection failure`() = runTest {
+    @Test
+    fun `disconnect maps to connection failure`() = runTest {
         server.enqueue(
             MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START),
         )

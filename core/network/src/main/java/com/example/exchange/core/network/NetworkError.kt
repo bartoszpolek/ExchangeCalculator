@@ -16,6 +16,7 @@ fun Throwable.toNetworkError(): NetworkError = when (this) {
         in 500..599 -> NetworkError.Server(code)
         else -> NetworkError.Unknown(this)
     }
+
     is IOException -> NetworkError.ConnectionFailure
     else -> NetworkError.Unknown(this)
 }

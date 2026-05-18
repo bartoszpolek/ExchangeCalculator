@@ -31,6 +31,7 @@ private fun Throwable.toCurrencyListError(): CurrencyListError =
             } else {
                 CurrencyListError.Unknown(this)
             }
+
         is NetworkError.Server -> CurrencyListError.Server(networkError.code)
         NetworkError.ConnectionFailure -> CurrencyListError.Network
         is NetworkError.Unknown -> CurrencyListError.Unknown(networkError.cause)

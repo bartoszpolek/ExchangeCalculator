@@ -7,3 +7,18 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.hilt) apply false
 }
+
+tasks.register("qualityCheck") {
+    dependsOn(
+        ":app:lintDebug",
+        ":app:test",
+        ":core:common:lintDebug",
+        ":core:common:test",
+        ":core:designsystem:lintDebug",
+        ":core:designsystem:test",
+        ":core:network:lintDebug",
+        ":core:network:test",
+        ":feature:exchange:lintDebug",
+        ":feature:exchange:test",
+    )
+}

@@ -37,4 +37,11 @@ val ExchangeTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.32.sp,
     ),
+    bodyMedium = TextStyle(
+        fontFamily = Default,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.24.sp,
+    ),
 )

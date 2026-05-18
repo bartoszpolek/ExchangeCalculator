@@ -6,6 +6,8 @@ import java.text.DecimalFormatSymbols
 import java.text.NumberFormat
 import java.util.Locale
 
+const val ZERO_AMOUNT = "0"
+
 class AmountFormatter(
     private val locale: Locale = Locale.getDefault(),
 ) {
@@ -23,13 +25,27 @@ class AmountFormatter(
         return normalized.toBigDecimalOrNull()
     }
 
-    fun format(amount: BigDecimal, scale: Int): String {
-        val rounded = amount.setScale(scale, RoundingMode.HALF_EVEN)
-        val format = NumberFormat.getNumberInstance(locale).apply {
-            minimumFractionDigits = scale
-            maximumFractionDigits = scale
-            isGroupingUsed = true
+    fun formatDisplayAmount(amount: BigDecimal): String =
+        if (amount.compareTo(BigDecimal.ZERO) == 0) {
+            ZERO_AMOUNT
+        } else {
+            amount.setScale(DISPLAY_SCALE, RoundingMode.HALF_EVEN)
+                .stripTrailingZeros()
+                .toPlainString()
         }
-        return format.format(rounded)
+
+    fun formatRate(amount: BigDecimal): String {
+        val format = NumberFormat.getNumberInstance(locale).apply {
+            minimumFractionDigits = 0
+            maximumFractionDigits = RATE_MAX_FRACTION_DIGITS
+            isGroupingUsed = true
+            roundingMode = RoundingMode.HALF_EVEN
+        }
+        return format.format(amount)
+    }
+
+    private companion object {
+        const val DISPLAY_SCALE = 2
+        const val RATE_MAX_FRACTION_DIGITS = 4
     }
 }

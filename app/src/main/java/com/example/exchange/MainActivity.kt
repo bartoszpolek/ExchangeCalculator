@@ -7,7 +7,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.example.exchange.core.designsystem.theme.ExchangeTheme
-import com.example.exchange.feature.exchange.ui.ExchangeRoute
+import com.example.exchange.feature.exchange.presentation.ExchangeRoute
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
